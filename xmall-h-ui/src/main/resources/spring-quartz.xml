@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd"
+       default-lazy-init="true">
+	<!-- 这个类用来做需要完成的业务-->
+	<bean id="myJob2" class="com.ssm.quartz.MyJob2"></bean>
+	<!-- 定时任务 -->
+	<!-- 定义调用对象和调用对象的方法，这个配置和普通的一样的,id是JobDetail的名字  -->
+	<bean id="jobtask"
+	      class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+		<!-- 调用的类  -->
+		<property name="targetObject" ref="myJob2"></property>
+		<!-- 调用的方法  -->
+		<property name="targetMethod" value="doSomething"></property>
+		<!-- 是否并发  -->
+		<property name="concurrent" value="false"></property>
+	</bean>
+	<!-- 定义触发时间 ，这边就不同了，这里必须将时间设置成无限长，因为我们要去读取数据库的时间来做为定时器的触发时间-->
+	<bean id="cronTrigger" class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+		<property name="jobDetail" ref="jobtask"></property>
+		<!-- cron表达式 ,设置每隔一秒执行一次 -->
+		<property name="cronExpression" value="0/1 * * * * ?"></property>
+	</bean>
+	<!-- 总管理类 如果将lazy-init='false'那么容器启动就会执行调度程序  -->
+	<bean id="startQuertz" lazy-init="true" autowire="no"
+	      class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+		<property name="triggers">
+			<list>
+				<ref bean="cronTrigger"/>
+			</list>
+		</property>
+	</bean>
+	<!--这个类是用来设置触发时间的， startJobs方法启动调度容器，然后按照上面触发器每隔1s执行所配置的myJob2.doSomething()方法 -->
+	<bean id="quartzManager" class="com.ssm.quartz.QuartzManager" lazy-init="false" init-method="startJobs" >
+		<!--这个对象一定要注入，这样类才能进行管理，还有在类型要用get set方法，不然会报错。-->
+		<property name="scheduler" ref="startQuertz" />
+	</bean>
+
+</beans>
